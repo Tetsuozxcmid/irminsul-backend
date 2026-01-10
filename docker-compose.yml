@@ -7,4 +7,23 @@ services:
       - "8000:8000"
     volumes:
       - ./app:/app/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    env_file: .env  
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    depends_on:
+      - db
+
+  db:
+    image: postgres:15
+    env_file: .env  
+    environment:
+      POSTGRES_HOST: ${DB_PORT}
+      POSTGRES_USER: ${DB_USER}  
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"  
+
+volumes:
+  postgres_data:
