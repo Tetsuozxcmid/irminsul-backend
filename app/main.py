@@ -1,12 +1,30 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.auth.routes import router as auth_router
+from app.users.routes import router as profile_router
+import os
 
-app = FastAPI(title='Irminsul', description='Test backend')
+APP_ENV = os.getenv("APP_ENV")  
+
+app = FastAPI(
+    title="Irminsul",
+    description="backend",
+    docs_url="/api/docs" if APP_ENV == "dev" else None,
+    redoc_url=None,
+    openapi_url="/api/openapi.json" if APP_ENV == "dev" else None,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(auth_router, prefix="/api/auth")
+app.include_router(profile_router, prefix="/api/profile")
 
 
-@app.get("/")
-async def root():
-    return {"message": "Welcome to Irminsul!"}
 
 
-app.include_router(auth_router, prefix="/auth")
