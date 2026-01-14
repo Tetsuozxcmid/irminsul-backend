@@ -8,6 +8,15 @@ class Settings(BaseSettings):
     DB_PASS: int
     DB_NAME: str
 
+    YANDEX_CLIENT_ID: str
+    YANDEX_CLIENT_SECRET: str
+    YANDEX_REDIRECT_URI_DEV: str
+    YANDEX_REDIRECT_URI: str
+
+
+
+
+
     model_config = SettingsConfigDict(
         env_file=".env",  
         env_file_encoding="utf-8",

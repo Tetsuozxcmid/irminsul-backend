@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.auth.routes import router as auth_router
-from app.users.routes import router as profile_router
+
+
 import os
 
 APP_ENV = os.getenv("APP_ENV")  
@@ -23,7 +24,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router, prefix="/api/auth")
-app.include_router(profile_router, prefix="/api/profile")
+
 
 
 
