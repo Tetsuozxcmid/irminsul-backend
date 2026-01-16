@@ -41,4 +41,10 @@ class UserCRUD:
         await session.commit()
         await session.refresh(user)
         return user
+    
+    @staticmethod
+    async def get_users(session: AsyncSession) -> list[User]:
+        stmt = select(User)
+        result = await session.execute(stmt)
+        return result.scalars().all()
 

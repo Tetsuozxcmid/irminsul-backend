@@ -10,8 +10,12 @@ class Settings(BaseSettings):
 
     YANDEX_CLIENT_ID: str
     YANDEX_CLIENT_SECRET: str
-    YANDEX_REDIRECT_URI_DEV: str
     YANDEX_REDIRECT_URI: str
+
+    FRONTEND_URL: str
+    APP_ENV: str
+
+    JWT_SECRET: str
 
 
 

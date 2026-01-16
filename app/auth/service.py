@@ -1,5 +1,6 @@
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.config import settings
 from app.auth.crud import UserCRUD
 from app.auth.models import AuthProvider
@@ -18,8 +19,11 @@ class YandexOAuthService:
                     "code": code,
                     "client_id": settings.YANDEX_CLIENT_ID,
                     "client_secret": settings.YANDEX_CLIENT_SECRET,
+                    "redirect_uri": settings.YANDEX_REDIRECT_URI,
                 },
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                headers={
+                    "Content-Type": "application/x-www-form-urlencoded"
+                },
             )
             resp.raise_for_status()
             return resp.json()["access_token"]
@@ -47,7 +51,7 @@ class AuthService:
         ya = await YandexOAuthService.get_yandex_user(token)
 
         email = ya.get("default_email")
-        provider_id = ya["id"]
+        provider_id = str(ya["id"])
 
         user = await UserCRUD.get_by_email_or_provider(
             session=session,
@@ -72,15 +76,8 @@ class AuthService:
         access, refresh = create_jwt_pair(user)
 
         return {
-            "type": "login",
             "cookies": set_auth_cookies(access, refresh),
-            "payload": {
-                "success": True,
-                "user": {
-                    "id": user.id,
-                    "email": user.email,
-                    "username": user.username,
-                },
-            },
         }
+
+
 
