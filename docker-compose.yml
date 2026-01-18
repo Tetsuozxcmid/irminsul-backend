@@ -4,17 +4,15 @@ services:
   web:
     build: .
     container_name: irminsul_web
-    env_file: .env
+    env_file:
+      - .env
+    ports:
+      - "8002:8000"  # Пробрасываем порт 8002 на хосте → 8000 в контейнере
     command: >
       sh -c "
       alembic upgrade head &&
-      uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
       "
-
-    ports:
-      - "8000:8000"
-    volumes:
-      - .:/app
     depends_on:
       - db
     restart: unless-stopped
@@ -22,7 +20,8 @@ services:
   db:
     image: postgres:15
     container_name: irminsul_db
-    env_file: .env
+    env_file:
+      - .env
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASS}
@@ -33,9 +32,3 @@ services:
 
 volumes:
   postgres_data:
-
-
-
-
-
-
