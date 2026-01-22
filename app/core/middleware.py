@@ -53,6 +53,11 @@ async def auth_middleware(request: Request, call_next):
 
 
 async def csrf_middleware(request: Request, call_next):
+    # В dev (или любых других средах кроме prod) CSRF отключаем
+    if settings.APP_ENV != "prod":
+        return await call_next(request)
+
+    # В prod — проверяем CSRF
     if (
         request.method in ("GET", "HEAD", "OPTIONS")
         or request.url.path.startswith(PUBLIC_PATHS)
@@ -64,16 +69,17 @@ async def csrf_middleware(request: Request, call_next):
 
     if not csrf_cookie or not csrf_header:
         return JSONResponse(
-        content={"detail": "CSRF token missing"},
-        status_code=403
+            content={"detail": "CSRF token missing"},
+            status_code=403
         )
 
     if csrf_cookie != csrf_header:
         return JSONResponse(
-        content={"detail": "CSRF token missing"},
-        status_code=403
-        )   
+            content={"detail": "CSRF token missing"},
+            status_code=403
+        )
 
     return await call_next(request)
+
 
 

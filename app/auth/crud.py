@@ -15,6 +15,11 @@ class UserCRUD:
             (User.email == email) | (User.provider_id == provider_id)
         )
         return await session.scalar(stmt)
+    
+    @staticmethod
+    async def get_by_id(session: AsyncSession, user_id: int) -> User | None:
+        stmt = select(User).where(User.id == user_id)
+        return await session.scalar(stmt)
 
     @staticmethod
     async def create_oauth_user(
