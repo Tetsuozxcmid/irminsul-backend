@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     YANDEX_CLIENT_SECRET: str
     YANDEX_REDIRECT_URI: str
 
+    VK_CALLBACK: str
+    VK_APP_ID: int
+    VK_APP_SECRET: str
+
     
 
     FRONTEND_URL: str

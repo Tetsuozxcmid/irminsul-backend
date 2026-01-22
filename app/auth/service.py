@@ -78,7 +78,78 @@ class AuthService:
         return {
             "cookies": set_auth_cookies(access, refresh),
         }
+    @staticmethod
+    async def vk_callback(
+        *,
+        session: AsyncSession,
+        code: str,
+    ):
+        token = await VKOAuthService.get_vk_token(code)
+        vk = await VKOAuthService.get_vk_user(token)
+
+        provider_id = str(vk["user_id"])
+        email = vk.get("email")
+
+        username = f"vk_{provider_id}"
+        full_name = f"{vk.get('first_name', '')} {vk.get('last_name', '')}".strip()
+        avatar_url = vk.get("avatar")
+
+        user = await UserCRUD.get_by_email_or_provider(
+            session=session,
+            email=email,
+            provider_id=provider_id,
+        )
+
+        if not user:
+            user = await UserCRUD.create_oauth_user(
+                session=session,
+                username=username,
+                email=email,
+                provider_id=provider_id,
+                provider=AuthProvider.VK,
+                full_name=full_name or None,
+                avatar_url=avatar_url,
+            )
+
+        access, refresh = create_jwt_pair(user)
+
+        return {
+            "cookies": set_auth_cookies(access, refresh),
+        }
     
+
+class VKOAuthService:
+
+    @staticmethod
+    async def get_vk_token(code: str) -> str:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                "https://id.vk.com/oauth2/auth",
+                data={
+                    "grant_type": "authorization_code",
+                    "code": code,
+                    "client_id": settings.VK_APP_ID,
+                    "client_secret": settings.VK_APP_SECRET,
+                    "redirect_uri": settings.VK_CALLBACK,
+                },
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+            resp.raise_for_status()
+            return resp.json()["access_token"]
+
+    @staticmethod
+    async def get_vk_user(access_token: str) -> dict:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                "https://id.vk.com/oauth2/user_info",
+                data={
+                    "client_id": settings.VK_APP_ID,
+                    "access_token": access_token,
+                },
+            )
+            resp.raise_for_status()
+            return resp.json()["user"]
+
 
 
     

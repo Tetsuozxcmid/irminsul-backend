@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.auth.routes import router as auth_router
+from app.auth.routes import vk_router as auth_vk_router
 from app.core.middleware import auth_middleware,csrf_middleware
 
 
@@ -25,6 +26,8 @@ app.add_middleware(
 )
 
 app.include_router(auth_router, prefix="/api/auth")
+app.include_router(auth_vk_router, prefix="/api/auth")
+
 
 app.middleware("http")(auth_middleware)
 app.middleware("http")(csrf_middleware)

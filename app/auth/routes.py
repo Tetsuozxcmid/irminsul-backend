@@ -12,6 +12,8 @@ from app.auth.crud import UserCRUD
 
 
 router = APIRouter(prefix="/yandex", tags=["OAuth"])
+vk_router = APIRouter(prefix="/vk",tags=["OAuth"])
+
 
 ALGORITHM = "HS256"
 
@@ -24,6 +26,53 @@ async def yandex_login():
         f"&redirect_uri={settings.YANDEX_REDIRECT_URI}"
     )
     return RedirectResponse(url)
+
+@vk_router.get("/login")
+async def vk_login():
+    url = (
+        "https://id.vk.com/authorize"
+        "?response_type=code"
+        f"&client_id={settings.VK_APP_ID}"
+        f"&redirect_uri={settings.VK_CALLBACK}"
+        "&scope=email"
+    )
+    return RedirectResponse(url)
+
+@vk_router.get("/callback")
+async def vk_callback(
+    session: AsyncSession = Depends(get_db),
+    code: str | None = None,
+    error: str | None = None,
+):
+    if error:
+        return RedirectResponse(
+            f"{settings.FRONTEND_URL}?error={error}"
+        )
+
+    if not code:
+        return RedirectResponse(
+            f"{settings.FRONTEND_URL}?error=code_missing"
+        )
+
+    result = await AuthService.vk_callback(
+        session=session,
+        code=code,
+    )
+
+    response = RedirectResponse(settings.FRONTEND_URL)
+
+    for cookie in result["cookies"]["Set-Cookie"]:
+        response.headers.append("Set-Cookie", cookie)
+
+    csrf = generate_csrf_token()
+    csrf_cookie = f"csrf_token={csrf}; Path=/; SameSite=Lax"
+
+    if settings.APP_ENV == "prod":
+        csrf_cookie += "; Secure"
+
+    response.headers.append("Set-Cookie", csrf_cookie)
+
+    return response
 
 
 
