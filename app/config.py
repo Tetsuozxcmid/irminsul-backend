@@ -1,11 +1,11 @@
 from pathlib import Path
-from pydantic_settings import BaseSettings,SettingsConfigDict
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     DB_HOST: str
     DB_PORT: int
     DB_USER: str
-    DB_PASS: int
+    DB_PASS: str  # исправил на str!
     DB_NAME: str
 
     YANDEX_CLIENT_ID: str
@@ -17,22 +17,17 @@ class Settings(BaseSettings):
     VK_APP_SECRET: str
 
     FRONTEND_URL: str
-    APP_ENV: str
 
     JWT_SECRET: str
 
     model_config = SettingsConfigDict(
-        env_file=".env",  
+        env_file=".env",
         env_file_encoding="utf-8",
-        extra="ignore"  
+        extra="ignore"
     )
 
     @property
     def DATABASE_URL(self):
         return f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASS}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
     
-    @property
-    def RABBITMQ_URL(self):
-        return f"{self.RABBITMQ_URL}"
-    
-settings = Settings() 
+settings = Settings()

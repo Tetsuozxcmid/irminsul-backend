@@ -3,38 +3,37 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.auth.routes import router as auth_router
 from app.auth.routes import vk_router as auth_vk_router
 from app.users.routes import router as profile_router
-from app.core.middleware import auth_middleware,csrf_middleware
-
-
-import os
-
-APP_ENV = os.getenv("APP_ENV")  
+from app.core.middleware import auth_middleware  # только auth_middleware
 
 app = FastAPI(
     title="Irminsul",
     description="backend",
-    docs_url="/api/docs" if APP_ENV == "dev" else None,
+    docs_url="/api/docs",
     redoc_url=None,
-    openapi_url="/api/openapi.json" if APP_ENV == "dev" else None,
+    openapi_url="/api/openapi.json",
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "https://irminsul.space",
+        "https://www.irminsul.space",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
+
+# Только один middleware
+app.middleware("http")(auth_middleware)
 
 app.include_router(auth_router, prefix="/api/auth")
 app.include_router(auth_vk_router, prefix="/api/auth")
-app.include_router(profile_router,prefix="/api")
+app.include_router(profile_router, prefix="/api")
 
-
-app.middleware("http")(auth_middleware)
-app.middleware("http")(csrf_middleware)
-
-
-
-
-
+@app.get("/api/health")
+async def health_check():
+    return {"status": "ok"}

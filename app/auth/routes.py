@@ -1,19 +1,16 @@
-from fastapi import APIRouter, Depends,Request,HTTPException
+from fastapi import APIRouter, Depends, Request, HTTPException
 from jose import jwt, JWTError
-from fastapi.responses import RedirectResponse,JSONResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.config import settings
 from app.auth.service import AuthService
-from app.core.security import create_jwt_pair, set_auth_cookies,generate_csrf_token
-from app.db.session import get_db
+from app.core.security import create_jwt_pair, set_auth_cookies  # убрал generate_csrf_token
 from app.auth.crud import UserCRUD
 
-
 router = APIRouter(prefix="/yandex", tags=["OAuth"])
-vk_router = APIRouter(prefix="/vk",tags=["OAuth"])
-
+vk_router = APIRouter(prefix="/vk", tags=["OAuth"])
 
 ALGORITHM = "HS256"
 
@@ -61,20 +58,11 @@ async def vk_callback(
 
     response = RedirectResponse(settings.FRONTEND_URL)
 
+    # Только токены, без CSRF
     for cookie in result["cookies"]["Set-Cookie"]:
         response.headers.append("Set-Cookie", cookie)
 
-    csrf = generate_csrf_token()
-    csrf_cookie = f"csrf_token={csrf}; Path=/; SameSite=Lax"
-
-    if settings.APP_ENV == "prod":
-        csrf_cookie += "; Secure"
-
-    response.headers.append("Set-Cookie", csrf_cookie)
-
     return response
-
-
 
 @router.get("/callback")
 async def yandex_callback(
@@ -98,26 +86,14 @@ async def yandex_callback(
     )
 
     response = RedirectResponse(settings.FRONTEND_URL)
-
-
+    
     for cookie in result["cookies"]["Set-Cookie"]:
         response.headers.append("Set-Cookie", cookie)
 
-
-    csrf = generate_csrf_token()
-    csrf_cookie = f"csrf_token={csrf}; Path=/; SameSite=Lax"
-
-    if settings.APP_ENV == "prod":
-        csrf_cookie += "; Secure"
-
-    response.headers.append("Set-Cookie", csrf_cookie)
-
     return response
 
-
-
 @router.post("/refresh")
-async def refresh_token(request: Request):
+async def refresh_token(request: Request, session: AsyncSession = Depends(get_db)):
     refresh = request.cookies.get("refresh_token")
 
     if not refresh:
@@ -138,9 +114,7 @@ async def refresh_token(request: Request):
     except JWTError:
         raise HTTPException(401, "Invalid refresh token")
 
-    async with get_db() as session:
-        user = await UserCRUD.get_by_id(session, user_id)
-
+    user = await UserCRUD.get_by_id(session, user_id)
 
     if not user:
         raise HTTPException(401, "User not found")
@@ -154,12 +128,7 @@ async def refresh_token(request: Request):
 
     return response
 
-
 @router.get("/check")
 async def check_users(db: AsyncSession = Depends(get_db)):
     result = await UserCRUD.get_users(db)
-
     return result
-
-
-

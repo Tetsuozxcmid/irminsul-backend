@@ -1,14 +1,8 @@
 from datetime import datetime, timedelta
 from jose import jwt
 from app.config import settings
-import secrets
 
 ALGORITHM = "HS256"
-
-
-def generate_csrf_token() -> str:
-    return secrets.token_urlsafe(32)
-
 
 def create_jwt_pair(user):
     now = datetime.utcnow()
@@ -39,34 +33,21 @@ def create_jwt_pair(user):
 
     return access, refresh
 
+def set_auth_cookies(access: str, refresh: str) -> dict:
+    access_cookie = (
+        f"access_token={access}; "
+        "Path=/; "
+        "HttpOnly; "
+        "Secure; "
+        "SameSite=Lax"
+    )
+    
+    refresh_cookie = (
+        f"refresh_token={refresh}; "
+        "Path=/; "
+        "HttpOnly; "
+        "Secure; "
+        "SameSite=Lax"
+    )
 
-def set_auth_cookies(access: str, refresh: str, csrf: str | None = None) -> dict:
-   
-    secure = settings.APP_ENV == "prod"
-    http_only = settings.APP_ENV == "prod"  
-
-    access_cookie = f"access_token={access}; Path=/; SameSite=Lax"
-    refresh_cookie = f"refresh_token={refresh}; Path=/; SameSite=Lax"
-
-    # CSRF токен
-    cookies = []
-    if csrf:
-        csrf_cookie = f"csrf_token={csrf}; Path=/; SameSite=Lax"
-        if secure:
-            csrf_cookie += "; Secure"
-        cookies.append(csrf_cookie)
-
-
-    if http_only:
-        access_cookie += "; HttpOnly"
-        refresh_cookie += "; HttpOnly"
-
-
-    if secure:
-        access_cookie += "; Secure"
-        refresh_cookie += "; Secure"
-
-    cookies.extend([access_cookie, refresh_cookie])
-
-    return {"Set-Cookie": cookies}
-
+    return {"Set-Cookie": [access_cookie, refresh_cookie]}
