@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.auth.routes import router as auth_router
 from app.auth.routes import vk_router as auth_vk_router
 from app.users.routes import router as profile_router
-from app.core.middleware import auth_middleware  # только auth_middleware
+
 
 app = FastAPI(
     title="Irminsul",
@@ -27,8 +27,8 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-# Только один middleware
-app.middleware("http")(auth_middleware)
+
+
 
 app.include_router(auth_router, prefix="/api/auth")
 app.include_router(auth_vk_router, prefix="/api/auth")
