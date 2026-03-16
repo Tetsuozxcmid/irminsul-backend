@@ -6,7 +6,8 @@ from app.records.crud import (
     InstitutionCRUD, SpecialtyCRUD, SubjectCRUD, 
     RecordCRUD, FileCRUD
 )
-from app.records.schemas import RecordCreate, RecordCreateResponse
+from app.records.schemas import PaginatedRecordsResponse, RecordCreate, RecordCreateResponse, RecordDetailOut, RecordSearchItem
+
 from app.records.file_records import FileService
 from app.auth.models import User
 
@@ -109,4 +110,114 @@ class RecordService:
             image_path=image_path,
             files=record_with_rels.files if record_with_rels else [],
             message="Record created successfully"
+        )
+
+    @staticmethod
+    async def search_records(
+        session: AsyncSession,
+        *,
+        institution_id: Optional[int] = None,
+        specialty_id: Optional[int] = None,
+        course: Optional[int] = None,
+        work_type: Optional[str] = None,
+        subject_id: Optional[int] = None,
+        search_query: Optional[str] = None,
+        limit: int = 20,
+        cursor: Optional[int] = None,
+        current_user: Optional[User] = None,
+    ) -> PaginatedRecordsResponse:
+        """
+        Поиск записей с фильтрацией и пагинацией
+        """
+        # Получаем записи
+        records, next_cursor = await RecordCRUD.search(
+            session=session,
+            institution_id=institution_id,
+            specialty_id=specialty_id,
+            course=course,
+            work_type=work_type,
+            subject_id=subject_id,
+            search_query=search_query,
+            limit=limit,
+            cursor=cursor
+        )
+        
+        # Получаем общее количество
+        total = await RecordCRUD.count(
+            session=session,
+            institution_id=institution_id,
+            specialty_id=specialty_id,
+            course=course,
+            work_type=work_type,
+            subject_id=subject_id,
+            search_query=search_query
+        )
+        
+        # Формируем ответ
+        items = []
+        for record in records:
+            short_desc = record.description[:150] + "..." if record.description and len(record.description) > 150 else (record.description or "")
+            
+            items.append(RecordSearchItem(
+                id=record.id,
+                title=record.title,
+                image_path=record.image_path,
+                short_description=short_desc,
+                created_at=record.created_at,
+                downloads_count=record.downloads_count,
+                avg_rating=record.avg_rating,
+                price=record.price,
+                institution_name=record.institution.name if record.institution else None,
+                specialty_name=record.specialty.name if record.specialty else None,
+                work_type=record.work_type,
+                course=record.course
+            ))
+        
+        return PaginatedRecordsResponse(
+            items=items,
+            next_cursor=next_cursor,
+            total=total
+        )
+    
+    @staticmethod
+    async def get_record_detail(
+        session: AsyncSession,
+        record_id: int,
+        current_user: Optional[User] = None
+    ) -> RecordDetailOut:
+        """
+        Получает детальную информацию о записи
+        """
+        record = await RecordCRUD.get_with_relations(session, record_id)
+        if not record:
+            raise HTTPException(status_code=404, detail="Record not found")
+        
+        return RecordDetailOut(
+            id=record.id,
+            title=record.title,
+            description=record.description,
+            price=record.price,
+            institution={
+                "id": record.institution.id,
+                "name": record.institution.name
+            } if record.institution else None,
+            specialty={
+                "id": record.specialty.id,
+                "name": record.specialty.name
+            } if record.specialty else None,
+            course=record.course,
+            work_type=record.work_type,
+            subject={
+                "id": record.subject.id,
+                "name": record.subject.name
+            } if record.subject else None,
+            image_path=record.image_path,
+            author_id=record.author_id,
+            author_name=record.author.username if record.author else "Unknown",
+            downloads_count=record.downloads_count,
+            avg_rating=record.avg_rating,
+            created_at=record.created_at,
+            updated_at=record.updated_at,
+            published_at=record.published_at,
+            files_count=len(record.files) if record.files else 0
         )

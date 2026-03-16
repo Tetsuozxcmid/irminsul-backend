@@ -1,4 +1,4 @@
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from typing import Optional, Union, List
@@ -203,3 +203,103 @@ class RecordCRUD:
             selectinload(Record.author)
         )
         return await session.scalar(stmt)
+    
+    @staticmethod
+    async def search(
+        session: AsyncSession,
+        *,
+        institution_id: Optional[int] = None,
+        specialty_id: Optional[int] = None,
+        course: Optional[int] = None,
+        work_type: Optional[str] = None,
+        subject_id: Optional[int] = None,
+        search_query: Optional[str] = None,
+        limit: int = 20,
+        cursor: Optional[int] = None,
+    ) -> tuple[List[Record], Optional[int]]:
+        """
+        Поиск записей с фильтрацией и пагинацией
+        Возвращает (список записей, следующий курсор)
+        """
+        # Собираем только не-None фильтры
+        filter_params = {
+            k: v for k, v in {
+                'institution_id': institution_id,
+                'specialty_id': specialty_id,
+                'course': course,
+                'work_type': work_type,
+                'subject_id': subject_id
+            }.items() if v is not None
+        }
+        
+        # Базовый запрос
+        stmt = select(Record).filter_by(**filter_params).where(Record.status == "published")
+        
+        # Поиск по тексту
+        if search_query:
+            pattern = f"%{search_query}%"
+            stmt = stmt.where(
+                or_(
+                    Record.title.ilike(pattern),
+                    Record.description.ilike(pattern)
+                )
+            )
+        
+        # Пагинация
+        if cursor:
+            stmt = stmt.where(Record.id < cursor)
+        
+        stmt = stmt.order_by(Record.id.desc())\
+                   .limit(limit + 1)\
+                   .options(
+                       selectinload(Record.institution),
+                       selectinload(Record.specialty)
+                   )
+        
+        result = await session.execute(stmt)
+        records = result.scalars().unique().all()
+        
+        next_cursor = records[-2].id if len(records) > limit else None
+        return records[:limit], next_cursor
+    
+    @staticmethod
+    async def count(
+        session: AsyncSession,
+        *,
+        institution_id: Optional[int] = None,
+        specialty_id: Optional[int] = None,
+        course: Optional[int] = None,
+        work_type: Optional[str] = None,
+        subject_id: Optional[int] = None,
+        search_query: Optional[str] = None,
+    ) -> int:
+        """Подсчитывает количество записей по фильтрам"""
+        # Собираем только не-None фильтры
+        filter_params = {
+            k: v for k, v in {
+                'institution_id': institution_id,
+                'specialty_id': specialty_id,
+                'course': course,
+                'work_type': work_type,
+                'subject_id': subject_id
+            }.items() if v is not None
+        }
+        
+        query = select(func.count()).select_from(Record).where(Record.status == "published")
+        
+        # Применяем фильтры через where
+        for key, value in filter_params.items():
+            if hasattr(Record, key):
+                query = query.where(getattr(Record, key) == value)
+        
+        if search_query:
+            pattern = f"%{search_query}%"
+            query = query.where(
+                or_(
+                    Record.title.ilike(pattern),
+                    Record.description.ilike(pattern)
+                )
+            )
+        
+        result = await session.execute(query)
+        return result.scalar()

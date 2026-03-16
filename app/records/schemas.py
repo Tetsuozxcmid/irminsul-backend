@@ -110,3 +110,50 @@ class RecordOut(BaseModel):
     published_at: Optional[datetime]
     
     model_config = ConfigDict(from_attributes=True)
+
+
+class RecordSearchItem(BaseModel):
+    """Элемент для поисковой выдачи"""
+    id: int
+    title: str
+    image_path: Optional[str] = None
+    short_description: str
+    created_at: datetime
+    downloads_count: int
+    avg_rating: float
+    price: int
+    institution_name: Optional[str] = None
+    specialty_name: Optional[str] = None
+    work_type: str
+    course: int
+    
+    model_config = ConfigDict(from_attributes=True)
+
+class PaginatedRecordsResponse(BaseModel):
+    """Ответ с пагинацией"""
+    items: List[RecordSearchItem]
+    next_cursor: Optional[int] = None
+    total: int
+
+class RecordDetailOut(BaseModel):
+    """Детальная информация о записи"""
+    id: int
+    title: str
+    description: Optional[str]
+    price: int
+    institution: Optional[dict] = None
+    specialty: Optional[dict] = None
+    course: int
+    work_type: str
+    subject: Optional[dict] = None
+    image_path: Optional[str]
+    author_id: int
+    author_name: str
+    downloads_count: int
+    avg_rating: float
+    created_at: datetime
+    updated_at: Optional[datetime]
+    published_at: Optional[datetime]
+    files_count: int
+    
+    model_config = ConfigDict(from_attributes=True)
