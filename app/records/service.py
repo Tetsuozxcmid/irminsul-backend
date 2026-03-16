@@ -7,7 +7,7 @@ from app.records.crud import (
     RecordCRUD, FileCRUD
 )
 from app.records.schemas import RecordCreate, RecordCreateResponse
-from app.records.file_service import FileService
+from app.records.file_records import FileService
 from app.auth.models import User
 
 class RecordService:
