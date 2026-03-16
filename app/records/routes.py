@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional, Union
 import json
 
 from app.db.session import get_db
 from app.records.schemas import (
-    RecordCreate, RecordCreateResponse, RecordOut,
+    PaginatedRecordsResponse, RecordCreate, RecordCreateResponse, RecordDetailOut, RecordOut,
     InstitutionOut, SpecialtyOut, SubjectOut
 )
 from app.records.service import RecordService
@@ -105,3 +105,65 @@ async def get_record(
     if not record:
         raise HTTPException(404, "Record not found")
     return record
+
+@router.get("/search", response_model=PaginatedRecordsResponse)
+async def search_records(
+    # Фильтры
+    institution_id: Optional[int] = Query(None, description="ID вуза"),
+    specialty_id: Optional[int] = Query(None, description="ID специальности"),
+    course: Optional[int] = Query(None, ge=1, le=6, description="Курс"),
+    work_type: Optional[str] = Query(None, description="Тип работы (course_work, diploma, etc)"),
+    subject_id: Optional[int] = Query(None, description="ID предмета"),
+    q: Optional[str] = Query(None, description="Поисковый запрос"),
+    
+    # Пагинация
+    limit: int = Query(20, ge=1, le=100, description="Количество записей на странице"),
+    cursor: Optional[int] = Query(None, description="ID последней записи с предыдущей страницы"),
+    
+    # Зависимости
+    session: AsyncSession = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    """
+    Поиск записей с фильтрацией и пагинацией
+    
+    - **q** - поиск по названию и описанию
+    - **institution_id**, **specialty_id**, **course**, **work_type**, **subject_id** - фильтры
+    - **limit** - количество записей на странице (1-100)
+    - **cursor** - ID последней записи с предыдущей страницы для пагинации
+    
+    Примеры:
+    - `/api/records/search?limit=10` - первые 10 записей
+    - `/api/records/search?institution_id=1&course=4` - фильтр по вузу и курсу
+    - `/api/records/search?q=диплом&limit=20` - поиск по тексту
+    """
+    return await RecordService.search_records(
+        session=session,
+        institution_id=institution_id,
+        specialty_id=specialty_id,
+        course=course,
+        work_type=work_type,
+        subject_id=subject_id,
+        search_query=q,
+        limit=limit,
+        cursor=cursor,
+        current_user=user
+    )
+
+@router.get("/{record_id}", response_model=RecordDetailOut)
+async def get_record_detail(
+    record_id: int,
+    session: AsyncSession = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    """
+    Получение детальной информации о записи по ID
+    
+    Возвращает полную информацию о записи, включая связанные данные
+    (вуз, специальность, предмет, автор, количество файлов)
+    """
+    return await RecordService.get_record_detail(
+        session=session,
+        record_id=record_id,
+        current_user=user
+    )
