@@ -24,6 +24,8 @@ async def yandex_login():
     )
     return RedirectResponse(url)
 
+
+
 @vk_router.get("/login")
 async def vk_login():
     url = (
