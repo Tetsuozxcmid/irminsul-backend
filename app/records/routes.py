@@ -95,16 +95,7 @@ async def get_subjects(
     """Получение списка всех предметов"""
     return await SubjectCRUD.get_all(session)
 
-@router.get("/{record_id}", response_model=RecordOut)
-async def get_record(
-    record_id: int,
-    session: AsyncSession = Depends(get_db)
-):
-    """Получение записи по ID"""
-    record = await RecordCRUD.get_with_relations(session, record_id)
-    if not record:
-        raise HTTPException(404, "Record not found")
-    return record
+
 
 @router.get("/search", response_model=PaginatedRecordsResponse)
 async def search_records(
