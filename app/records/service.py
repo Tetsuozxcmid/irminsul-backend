@@ -1,16 +1,17 @@
 from fastapi import HTTPException, UploadFile
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional, Union
 from app.records.models import Record, File
 from app.records.crud import (
     InstitutionCRUD, SpecialtyCRUD, SubjectCRUD, 
-    RecordCRUD, FileCRUD
+    RecordCRUD, FileCRUD,PurchaseCRUD
 )
 from app.records.schemas import PaginatedRecordsResponse, RecordCreate, RecordCreateResponse, RecordDetailOut, RecordSearchItem
 
 from app.records.file_records import FileService
 from app.auth.models import User
-
+from app.auth.crud import UserCRUD
 class RecordService:
     
     @staticmethod
@@ -192,6 +193,11 @@ class RecordService:
         if not record:
             raise HTTPException(status_code=404, detail="Record not found")
         
+        # Проверяем, купил ли текущий пользователь эту запись
+        bought = False
+        if current_user:
+            bought = await PurchaseCRUD.has_purchased(session, current_user.id, record_id)
+        
         return RecordDetailOut(
             id=record.id,
             title=record.title,
@@ -219,5 +225,93 @@ class RecordService:
             created_at=record.created_at,
             updated_at=record.updated_at,
             published_at=record.published_at,
-            files_count=len(record.files) if record.files else 0
+            files_count=len(record.files) if record.files else 0,
+            bought=bought  
         )
+    @staticmethod
+    async def buy_record(
+        session: AsyncSession,
+        record_id: int,
+        user: User
+    ) -> dict:
+        """
+        Покупка записи
+        Возвращает статус покупки и обновленный баланс
+        """
+        # Получаем запись с блокировкой для избежания race condition
+        stmt = select(Record).where(Record.id == record_id).with_for_update()
+        result = await session.execute(stmt)
+        record = result.scalar_one_or_none()
+        
+        if not record:
+            raise HTTPException(status_code=404, detail="Record not found")
+        
+        # Проверяем статус записи (только опубликованные можно купить)
+        if record.status != "published":
+            raise HTTPException(
+                status_code=400, 
+                detail="Record is not available for purchase"
+            )
+        
+        # Проверяем, не купил ли уже
+        already_bought = await PurchaseCRUD.has_purchased(session, user.id, record_id)
+        if already_bought:
+            raise HTTPException(
+                status_code=400, 
+                detail="You have already purchased this record"
+            )
+        
+        # Проверяем баланс
+        if user.balance < record.price:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Insufficient balance. Need {record.price}, have {user.balance}"
+            )
+        
+        try:
+            # 1. Списание у покупателя
+            buyer_updated = await UserCRUD.update_balance(
+                session, 
+                user.id, 
+                -record.price
+            )
+            
+            # 2. Начисление автору (если покупатель не автор)
+            if record.author_id != user.id:
+                await UserCRUD.update_balance(
+                    session, 
+                    record.author_id, 
+                    record.price
+                )
+            
+            # 3. Создаем запись о покупке
+            await PurchaseCRUD.create_purchase(
+                session, 
+                user.id, 
+                record_id, 
+                record.price
+            )
+            
+            # 4. Увеличиваем счетчик скачиваний
+            record.downloads_count += 1
+            
+            # 5. Коммитим все изменения
+            await session.commit()
+            
+            # 6. Возвращаем результат
+            return {
+                "success": True,
+                "record_id": record_id,
+                "record_title": record.title,
+                "price": record.price,
+                "new_balance": buyer_updated.balance,
+                "message": "Purchase successful"
+            }
+            
+        except Exception as e:
+            # В случае ошибки откатываем транзакцию
+            await session.rollback()
+            raise HTTPException(
+                status_code=500, 
+                detail=f"Purchase failed: {str(e)}"
+            )

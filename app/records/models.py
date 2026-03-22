@@ -1,6 +1,6 @@
 from sqlalchemy import String, Text, Integer, Enum, ForeignKey, DateTime, Boolean, Float, Table, Column
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import func
+from sqlalchemy import func,UniqueConstraint
 import enum
 from typing import Optional, List
 from ..db.base import Base
@@ -126,4 +126,19 @@ class Record(Base):
         secondary=record_files,
         back_populates="records",
         cascade="all, delete"
+    )
+
+class Purchase(Base):
+    __tablename__ = "purchases"
+    
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    record_id: Mapped[int] = mapped_column(ForeignKey("records.id", ondelete="CASCADE"), nullable=False)
+    price_paid: Mapped[int] = mapped_column(Integer, nullable=False)
+    purchased_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    
+    
+    
+    __table_args__ = (
+        UniqueConstraint('user_id', 'record_id', name='unique_user_record_purchase'),
     )

@@ -2,7 +2,7 @@ from sqlalchemy import select, or_, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from typing import Optional, Union, List
-from app.records.models import Record, Institution, Specialty, Subject, File
+from app.records.models import Record, Institution, Specialty, Subject, File,Purchase
 from app.records.schemas import RecordCreate
 
 class InstitutionCRUD:
@@ -303,3 +303,81 @@ class RecordCRUD:
         
         result = await session.execute(query)
         return result.scalar()
+    
+class PurchaseCRUD:
+    @staticmethod
+    async def has_purchased(
+        session: AsyncSession, 
+        user_id: int, 
+        record_id: int
+    ) -> bool:
+        """Проверяет, купил ли пользователь запись"""
+        stmt = select(Purchase).where(
+            Purchase.user_id == user_id,
+            Purchase.record_id == record_id
+        )
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none() is not None
+    
+    @staticmethod
+    async def create_purchase(
+        session: AsyncSession,
+        user_id: int,
+        record_id: int,
+        price: int
+    ) -> Purchase:
+        """Создает запись о покупке"""
+        purchase = Purchase(
+            user_id=user_id,
+            record_id=record_id,
+            price_paid=price
+        )
+        session.add(purchase)
+        await session.flush()
+        return purchase
+    
+    @staticmethod
+    async def get_user_purchases(
+        session: AsyncSession,
+        user_id: int,
+        limit: int = 50,
+        offset: int = 0
+    ) -> List[Purchase]:
+        """Получает список покупок пользователя"""
+        stmt = select(Purchase).where(
+            Purchase.user_id == user_id
+        ).order_by(
+            Purchase.purchased_at.desc()
+        ).limit(limit).offset(offset)
+        
+        result = await session.execute(stmt)
+        return result.scalars().all()
+    
+    @staticmethod
+    async def get_record_purchases(
+        session: AsyncSession,
+        record_id: int,
+        limit: int = 50,
+        offset: int = 0
+    ) -> List[Purchase]:
+        """Получает список покупок записи"""
+        stmt = select(Purchase).where(
+            Purchase.record_id == record_id
+        ).order_by(
+            Purchase.purchased_at.desc()
+        ).limit(limit).offset(offset)
+        
+        result = await session.execute(stmt)
+        return result.scalars().all()
+    
+    @staticmethod
+    async def count_purchases_by_record(
+        session: AsyncSession,
+        record_id: int
+    ) -> int:
+        """Считает количество покупок записи"""
+        stmt = select(func.count()).select_from(Purchase).where(
+            Purchase.record_id == record_id
+        )
+        result = await session.execute(stmt)
+        return result.scalar() or 0

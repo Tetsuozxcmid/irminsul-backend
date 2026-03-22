@@ -158,3 +158,33 @@ async def get_record_detail(
         record_id=record_id,
         current_user=user
     )
+
+@router.post("/{record_id}/buy")
+async def buy_record(
+    record_id: int,
+    session: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user)
+):
+    """
+    Покупка записи
+    
+    - Списывает внутренние баллы у покупателя
+    - Начисляет автору
+    - Помечает запись как купленную
+    - Увеличивает downloads_count
+    
+    Returns:
+    {
+        "success": true,
+        "record_id": 1,
+        "record_title": "Example Work",
+        "price": 500,
+        "new_balance": 500,
+        "message": "Purchase successful"
+    }
+    """
+    return await RecordService.buy_record(
+        session=session,
+        record_id=record_id,
+        user=user
+    )

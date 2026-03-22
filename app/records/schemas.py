@@ -155,5 +155,6 @@ class RecordDetailOut(BaseModel):
     updated_at: Optional[datetime]
     published_at: Optional[datetime]
     files_count: int
+    bought: bool = False  # ДОБАВИТЬ ЭТУ СТРОКУ
     
     model_config = ConfigDict(from_attributes=True)

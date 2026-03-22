@@ -1,4 +1,4 @@
-from sqlalchemy import DateTime, String, Boolean, Enum, func
+from sqlalchemy import DateTime, Integer, String, Boolean, Enum, func
 from sqlalchemy.orm import Mapped, mapped_column
 import enum
 from typing import Optional
@@ -36,6 +36,8 @@ class User(Base):
         nullable=True,
         index=True
     )
+
+    balance: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     
 
     provider_id: Mapped[Optional[str]] = mapped_column(
