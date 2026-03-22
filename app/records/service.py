@@ -27,20 +27,18 @@ class RecordService:
         """
         Создает новую запись с обработкой справочников и файлов
         """
-        # Проверка идемпотентности
+        # Проверка идемпотентности (без обращения к lazy-loaded отношениям)
         if data.idempotency_key:
             existing = await RecordCRUD.get_by_idempotency_key(session, data.idempotency_key)
             if existing:
-                # Получаем файлы существующей записи
-                existing_files = existing.files  # Это может вызвать ошибку
-                # Лучше сделать отдельный запрос для файлов
+                # Не трогаем existing.files, чтобы избежать MissingGreenlet
                 return RecordCreateResponse(
                     record_id=existing.id,
                     institution_id=existing.institution_id,
                     specialty_id=existing.specialty_id,
                     subject_id=existing.subject_id,
                     image_path=existing.image_path,
-                    files=[],  # Временно, пока не исправим
+                    files=[],  # Файлы не возвращаем
                     message="Record already exists"
                 )
         
@@ -99,8 +97,20 @@ class RecordService:
         # Коммитим транзакцию
         await session.commit()
         
-        # ❌ НЕ НАДО делать отдельный запрос, файлы уже есть в saved_files
-        # Просто используем saved_files для ответа
+        # Преобразуем File объекты в список для ответа
+        from app.records.schemas import FileOut
+        
+        files_out = []
+        for f in saved_files:
+            files_out.append(FileOut(
+                id=f.id,
+                filename=f.filename,
+                original_filename=f.original_filename,
+                file_path=f.file_path,
+                file_size=f.file_size,
+                mime_type=f.mime_type,
+                created_at=f.created_at
+            ))
         
         return RecordCreateResponse(
             record_id=record.id,
@@ -108,7 +118,7 @@ class RecordService:
             specialty_id=specialty.id,
             subject_id=subject.id,
             image_path=image_path,
-            files=saved_files,  # ←直接用 saved_files，不要再查询
+            files=files_out,
             message="Record created successfully"
         )
 
