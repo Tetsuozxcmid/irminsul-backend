@@ -12,6 +12,7 @@ class UserProfileOut(BaseModel):
     role: UserRole
     verified: bool
     is_active: bool
+    balance: int
 
     class Config:
         from_attributes = True

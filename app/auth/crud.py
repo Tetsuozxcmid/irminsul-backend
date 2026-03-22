@@ -52,4 +52,30 @@ class UserCRUD:
         stmt = select(User)
         result = await session.execute(stmt)
         return result.scalars().all()
+    
+    @staticmethod
+    async def update_balance(
+        session: AsyncSession,
+        user_id: int,
+        amount_change: int
+    ) -> User:
+        """
+        Изменяет баланс пользователя
+        amount_change: положительное число для пополнения, отрицательное для списания
+        """
+        # Используем with_for_update() для блокировки строки (race condition protection)
+        stmt = select(User).where(User.id == user_id).with_for_update()
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            raise ValueError(f"User {user_id} not found")
+        
+        new_balance = user.balance + amount_change
+        if new_balance < 0:
+            raise ValueError(f"Insufficient balance. Current: {user.balance}, change: {amount_change}")
+        
+        user.balance = new_balance
+        await session.flush()
+        return user
 
