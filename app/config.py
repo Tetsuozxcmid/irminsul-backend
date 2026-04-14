@@ -20,6 +20,9 @@ class Settings(BaseSettings):
 
     JWT_SECRET: str
 
+    # Внутренний ключ для POST /api/notifications (заголовок X-Internal-Key)
+    NOTIFICATIONS_INTERNAL_KEY: str = ""
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

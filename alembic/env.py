@@ -19,6 +19,7 @@ from app.records.models import (
     RecordStatus,
     record_files  
 )
+from app.notifications.models import Notification
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
