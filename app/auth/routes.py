@@ -6,13 +6,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.config import settings
 from app.auth.service import AuthService
-from app.core.security import create_jwt_pair, set_auth_cookies  # убрал generate_csrf_token
+from app.core.security import create_jwt_pair, set_auth_cookies, clear_auth_cookies
 from app.auth.crud import UserCRUD
 
 router = APIRouter(prefix="/yandex", tags=["OAuth"])
 vk_router = APIRouter(prefix="/vk", tags=["OAuth"])
+session_router = APIRouter(prefix="", tags=["Auth"])
 
 ALGORITHM = "HS256"
+
+
+def _append_cookies(response, cookies: dict) -> None:
+    for cookie in cookies["Set-Cookie"]:
+        response.headers.append("Set-Cookie", cookie)
+
 
 @router.get("/login")
 async def yandex_login():
@@ -25,7 +32,6 @@ async def yandex_login():
     return RedirectResponse(url)
 
 
-
 @vk_router.get("/login")
 async def vk_login():
     url = (
@@ -36,6 +42,7 @@ async def vk_login():
         "&scope=email"
     )
     return RedirectResponse(url)
+
 
 @vk_router.get("/callback")
 async def vk_callback(
@@ -59,12 +66,9 @@ async def vk_callback(
     )
 
     response = RedirectResponse(settings.FRONTEND_URL)
-
-    # Только токены, без CSRF
-    for cookie in result["cookies"]["Set-Cookie"]:
-        response.headers.append("Set-Cookie", cookie)
-
+    _append_cookies(response, result["cookies"])
     return response
+
 
 @router.get("/callback")
 async def yandex_callback(
@@ -88,13 +92,12 @@ async def yandex_callback(
     )
 
     response = RedirectResponse(settings.FRONTEND_URL)
-    
-    for cookie in result["cookies"]["Set-Cookie"]:
-        response.headers.append("Set-Cookie", cookie)
-
+    _append_cookies(response, result["cookies"])
     return response
 
+
 @router.post("/refresh")
+@session_router.post("/refresh")
 async def refresh_token(request: Request, session: AsyncSession = Depends(get_db)):
     refresh = request.cookies.get("refresh_token")
 
@@ -121,14 +124,19 @@ async def refresh_token(request: Request, session: AsyncSession = Depends(get_db
     if not user:
         raise HTTPException(401, "User not found")
 
-    access, refresh = create_jwt_pair(user)
-    cookies = set_auth_cookies(access, refresh)
-
+    access, new_refresh = create_jwt_pair(user)
     response = JSONResponse({"success": True})
-    for cookie in cookies["Set-Cookie"]:
-        response.headers.append("Set-Cookie", cookie)
-
+    _append_cookies(response, set_auth_cookies(access, new_refresh))
     return response
+
+
+@session_router.post("/logout")
+@session_router.get("/logout")
+async def logout():
+    response = JSONResponse({"ok": True})
+    _append_cookies(response, clear_auth_cookies())
+    return response
+
 
 @router.get("/check")
 async def check_users(db: AsyncSession = Depends(get_db)):
