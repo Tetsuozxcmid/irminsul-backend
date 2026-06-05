@@ -1,5 +1,8 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from app.auth.routes import router as auth_router
 from app.auth.routes import vk_router as auth_vk_router
 from app.auth.routes import session_router as auth_session_router
@@ -38,3 +41,12 @@ app.include_router(notifications_router, prefix="/api")
 @app.get("/api/health")
 async def health_check():
     return {"status": "ok"}
+
+
+uploads_dir = Path("uploads")
+uploads_dir.mkdir(parents=True, exist_ok=True)
+app.mount(
+    "/api/uploads",
+    StaticFiles(directory=str(uploads_dir)),
+    name="uploads",
+)

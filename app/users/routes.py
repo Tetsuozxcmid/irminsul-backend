@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -34,4 +34,17 @@ async def update_my_profile(
         session=session,
         user=user,
         data=data,
+    )
+
+
+@router.post("/profile/avatar", response_model=UserProfileOut)
+async def upload_profile_avatar(
+    avatar: UploadFile = File(...),
+    session: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    return await UserProfileService.upload_avatar(
+        session=session,
+        user=user,
+        file=avatar,
     )

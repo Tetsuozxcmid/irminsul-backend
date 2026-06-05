@@ -12,6 +12,10 @@ class FileService:
     UPLOAD_DIR = Path("uploads")
     IMAGES_DIR = UPLOAD_DIR / "images"
     FILES_DIR = UPLOAD_DIR / "files"
+    AVATARS_DIR = UPLOAD_DIR / "avatars"
+
+    # Публичный префикс для URL (через nginx /api/uploads/...)
+    PUBLIC_UPLOAD_PREFIX = "/api/uploads"
     
     # Допустимые типы файлов
     ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
@@ -28,12 +32,20 @@ class FileService:
     
     # Максимальный размер файла (10MB)
     MAX_FILE_SIZE = 10 * 1024 * 1024
-    
+    MAX_AVATAR_SIZE = 5 * 1024 * 1024
+
     @classmethod
     async def ensure_directories(cls):
         """Создает необходимые директории, если их нет"""
         cls.IMAGES_DIR.mkdir(parents=True, exist_ok=True)
         cls.FILES_DIR.mkdir(parents=True, exist_ok=True)
+        cls.AVATARS_DIR.mkdir(parents=True, exist_ok=True)
+
+    @classmethod
+    def public_url(cls, relative_path: str) -> str:
+        """relative_path: avatars/uuid.jpg или images/uuid.jpg"""
+        normalized = relative_path.replace("\\", "/").lstrip("/")
+        return f"{cls.PUBLIC_UPLOAD_PREFIX}/{normalized}"
     
     @classmethod
     async def save_image(cls, file: UploadFile) -> Tuple[str, str]:
@@ -66,7 +78,44 @@ class FileService:
             await buffer.write(content)
         
         return str(file_path), filename
-    
+
+    @classmethod
+    async def save_avatar(cls, file: UploadFile) -> Tuple[str, str]:
+        """Сохраняет аватар пользователя. Возвращает (относительный путь, имя файла)."""
+        await cls.ensure_directories()
+
+        content_type = (
+            file.content_type
+            or mimetypes.guess_type(file.filename)[0]
+            or "application/octet-stream"
+        )
+        if content_type not in cls.ALLOWED_IMAGE_TYPES:
+            raise HTTPException(
+                400,
+                f"Invalid image type. Allowed: {cls.ALLOWED_IMAGE_TYPES}",
+            )
+
+        file.file.seek(0, 2)
+        size = file.file.tell()
+        file.file.seek(0)
+
+        if size > cls.MAX_AVATAR_SIZE:
+            raise HTTPException(
+                400,
+                f"Avatar too large. Max size: {cls.MAX_AVATAR_SIZE} bytes",
+            )
+
+        ext = Path(file.filename or "").suffix or ".jpg"
+        filename = f"{uuid.uuid4()}{ext}"
+        file_path = cls.AVATARS_DIR / filename
+
+        async with aiofiles.open(file_path, "wb") as buffer:
+            content = await file.read()
+            await buffer.write(content)
+
+        relative = f"avatars/{filename}"
+        return relative, filename
+
     @classmethod
     async def save_file(cls, file: UploadFile, user_id: int) -> Tuple[str, str, int, str]:
         """

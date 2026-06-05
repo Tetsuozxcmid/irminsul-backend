@@ -1,9 +1,10 @@
-from fastapi import HTTPException
+from fastapi import HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.users.crud import UserProfileCRUD
 from app.users.schemas import UserProfileUpdate
 from app.auth.models import User
+from app.records.file_records import FileService
 
 
 class UserProfileService:
@@ -36,5 +37,21 @@ class UserProfileService:
             user=user,
             username=data.username,
             full_name=data.full_name,
+            description=data.description,
             avatar_url=data.avatar_url,
+        )
+
+    @staticmethod
+    async def upload_avatar(
+        *,
+        session: AsyncSession,
+        user: User,
+        file: UploadFile,
+    ) -> User:
+        relative_path, _ = await FileService.save_avatar(file)
+        avatar_url = FileService.public_url(relative_path)
+        return await UserProfileCRUD.update_profile(
+            session=session,
+            user=user,
+            avatar_url=avatar_url,
         )

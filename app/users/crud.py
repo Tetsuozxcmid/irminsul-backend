@@ -21,6 +21,7 @@ class UserProfileCRUD:
         *,
         username: str | None = None,
         full_name: str | None = None,
+        description: str | None = None,
         avatar_url: str | None = None,
     ) -> User:
         if username is not None:
@@ -28,6 +29,9 @@ class UserProfileCRUD:
 
         if full_name is not None:
             user.full_name = full_name
+
+        if description is not None:
+            user.description = description
 
         if avatar_url is not None:
             user.avatar_url = avatar_url

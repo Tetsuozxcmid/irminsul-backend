@@ -8,6 +8,7 @@ class UserProfileOut(BaseModel):
     username: str
     email: Optional[EmailStr]
     full_name: Optional[str]
+    description: Optional[str] = None
     avatar_url: Optional[str]
     role: UserRole
     verified: bool
@@ -21,4 +22,5 @@ class UserProfileOut(BaseModel):
 class UserProfileUpdate(BaseModel):
     username: Optional[str] = None
     full_name: Optional[str] = None
+    description: Optional[str] = None
     avatar_url: Optional[str] = None
