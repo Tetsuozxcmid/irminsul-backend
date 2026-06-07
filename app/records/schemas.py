@@ -122,6 +122,7 @@ class RecordSearchItem(BaseModel):
     downloads_count: int
     avg_rating: float
     price: int
+    author_id: int
     institution_name: Optional[str] = None
     specialty_name: Optional[str] = None
     work_type: str

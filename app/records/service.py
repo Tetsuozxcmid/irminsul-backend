@@ -131,6 +131,7 @@ class RecordService:
         course: Optional[int] = None,
         work_type: Optional[str] = None,
         subject_id: Optional[int] = None,
+        author_id: Optional[int] = None,
         search_query: Optional[str] = None,
         limit: int = 20,
         cursor: Optional[int] = None,
@@ -147,6 +148,7 @@ class RecordService:
             course=course,
             work_type=work_type,
             subject_id=subject_id,
+            author_id=author_id,
             search_query=search_query,
             limit=limit,
             cursor=cursor
@@ -160,6 +162,7 @@ class RecordService:
             course=course,
             work_type=work_type,
             subject_id=subject_id,
+            author_id=author_id,
             search_query=search_query
         )
         
@@ -177,6 +180,7 @@ class RecordService:
                 downloads_count=record.downloads_count,
                 avg_rating=record.avg_rating,
                 price=record.price,
+                author_id=record.author_id,
                 institution_name=record.institution.name if record.institution else None,
                 specialty_name=record.specialty.name if record.specialty else None,
                 work_type=record.work_type,

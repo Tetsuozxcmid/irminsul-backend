@@ -213,6 +213,7 @@ class RecordCRUD:
         course: Optional[int] = None,
         work_type: Optional[str] = None,
         subject_id: Optional[int] = None,
+        author_id: Optional[int] = None,
         search_query: Optional[str] = None,
         limit: int = 20,
         cursor: Optional[int] = None,
@@ -228,7 +229,8 @@ class RecordCRUD:
                 'specialty_id': specialty_id,
                 'course': course,
                 'work_type': work_type,
-                'subject_id': subject_id
+                'subject_id': subject_id,
+                'author_id': author_id,
             }.items() if v is not None
         }
         
@@ -271,6 +273,7 @@ class RecordCRUD:
         course: Optional[int] = None,
         work_type: Optional[str] = None,
         subject_id: Optional[int] = None,
+        author_id: Optional[int] = None,
         search_query: Optional[str] = None,
     ) -> int:
         """Подсчитывает количество записей по фильтрам"""
@@ -281,7 +284,8 @@ class RecordCRUD:
                 'specialty_id': specialty_id,
                 'course': course,
                 'work_type': work_type,
-                'subject_id': subject_id
+                'subject_id': subject_id,
+                'author_id': author_id,
             }.items() if v is not None
         }
         

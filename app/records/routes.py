@@ -140,6 +140,7 @@ async def search_records(
     work_type: Optional[str] = Query(None, description="Тип работы (course_work, diploma, etc)"),
     subject_id: Optional[int] = Query(None, description="ID предмета"),
     subject: Optional[str] = Query(None, description="Название предмета"),
+    author_id: Optional[int] = Query(None, description="ID автора записи"),
     q: Optional[str] = Query(None, description="Поисковый запрос"),
     query: Optional[str] = Query(None, description="Алиас для q (совместимость с фронтом)"),
     
@@ -156,6 +157,7 @@ async def search_records(
     
     - **q** / **query** - поиск по названию и описанию
     - **institution_id** / **institution**, **specialty_id** / **specialty**, **subject_id** / **subject** - фильтры
+    - **author_id** - только записи указанного автора
     - **limit** - количество записей на странице (1-100)
     - **cursor** - ID последней записи с предыдущей страницы для пагинации
     
@@ -185,6 +187,7 @@ async def search_records(
         course=course,
         work_type=work_type,
         subject_id=resolved_subject_id,
+        author_id=author_id,
         search_query=search_query,
         limit=limit,
         cursor=cursor,
